@@ -1,0 +1,1 @@
+- [ ] s/fstArray/fstMatrix/ ? After all, only 2-dimensional arrays are supported because an fst file is designed to support data frames
