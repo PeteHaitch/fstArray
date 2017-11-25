@@ -43,7 +43,9 @@ setMethod("dimnames", "fstArraySeed", function(x) {
 ###
 
 #' @importFrom fst fst.metadata read.fst
-#' @importFrom S4Vectors .Call2 wmsg
+#' @importFrom IRanges findOverlaps IRanges reduce
+#' @importFrom S4Vectors .Call2 subjectHits wmsg
+#' @importFrom stats end start
 # NOTE: rows must be a integer vector (although I think an fst file can have
 #       > .Machine$integer.max rows)
 # NOTE: cols must be a character vector
@@ -57,7 +59,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
     metadata <- fst.metadata(x@file)
     # TODO: `types` copied from fst:::print.fst.metadata(); find a more robust
     #       way to infer column types
-    types <- c("character", "integer", "real", "logical", "factor")
+    types <- c("character", "integer", "numeric", "logical", "factor")
     ans <- new(types[metadata$ColumnTypes[1L]])
     dim(ans) <- ans_dim
   } else {
@@ -72,27 +74,22 @@ setMethod("dimnames", "fstArraySeed", function(x) {
     } else {
       # TODO: Is it possible to read arbitrary rows of fst file instead of
       #       iterating over [from, to]-ranges?
-      # NOTE: This .Call2() is the relevant internal code called when running
-      #       `reduce(IRanges(rows, width = 1L))`
-      rows_as_ranges <- .Call2("Ranges_reduce",
-                               as.integer(rows), # start
-                               rep(1L, length(rows)), # width
-                               FALSE, # drop.empty.ranges
-                               1L, # min.gapwidth
-                               FALSE, # with.revmap
-                               FALSE, # with.inframe.attrib
-                               PACKAGE = "IRanges")
-      froms <- rows_as_ranges$start
-      tos <- rows_as_ranges$start + rows_as_ranges$width - 1L
+      rows_as_ranges <- IRanges(rows, width = 1)
+      reduced_ranges <- reduce(rows_as_ranges)
+
+      froms <- start(reduced_ranges)
+      tos <- end(reduced_ranges)
       ans_list <- mapply(function(from, to) {
         # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
         #       fst file directly into a matrix of appropriate dimensions?
         as.matrix(read.fst(x@file, columns = columns, from = from, to = to))
       }, from = froms, to = tos, SIMPLIFY = FALSE)
       ans <- do.call(rbind, ans_list)
-      # TODO: Allow for duplicated and unsorted row indices
+      # NOTE: Need to rearrange if row indices are unsorted and/or contain
+      #       duplicates
       if (is.unsorted(rows) || anyDuplicated(rows)) {
-        ans <- ans[rows, , drop = FALSE]
+        ol <- findOverlaps(rows_as_ranges, sort(rows_as_ranges))
+        ans <- ans[subjectHits(ol), , drop = FALSE]
       }
     }
   }
