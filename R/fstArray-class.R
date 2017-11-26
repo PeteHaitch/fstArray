@@ -49,56 +49,64 @@ setMethod("dimnames", "fstArraySeed", function(x) {
 # NOTE: rows must be a integer vector (although I think an fst file can have
 #       > .Machine$integer.max rows)
 # NOTE: cols must be a character vector
-.extract_array_from_fstArraySeed <- function(x, index) {
-  # TODO: Sanity check rows and cols
-  stopifnot(length(index) == 2L)
-  rows <- index[[1L]]
-  columns <- index[[2L]]
-  ans_dim <- DelayedArray:::get_Nindex_lengths(index, dim(x))
-  if (any(ans_dim == 0L)) {
-    metadata <- fst.metadata(x@file)
-    # TODO: `types` copied from fst:::print.fst.metadata(); find a more robust
-    #       way to infer column types
-    types <- c("character", "integer", "numeric", "logical", "factor")
-    ans <- new(types[metadata$ColumnTypes[1L]])
-    dim(ans) <- ans_dim
-  } else {
-    if (is.numeric(columns)) {
-      # NOTE: read.fst() requires column names rather than indices
-      columns <- colnames(x)[columns]
-    }
-    if (is.null(rows)) {
-      # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
-      #       fst file directly into a matrix of appropriate dimensions?
-      ans <- as.matrix(read.fst(x@file, columns, from = 1, to = NULL))
+.extract_data_frame_from_fstArraySeed <-
+  function(x, index, as.data.table = FALSE) {
+    # TODO: Sanity check rows and cols
+    stopifnot(length(index) == 2L)
+    rows <- index[[1L]]
+    columns <- index[[2L]]
+    ans_dim <- DelayedArray:::get_Nindex_lengths(index, dim(x))
+    if (any(ans_dim == 0L)) {
+      metadata <- fst.metadata(x@file)
+      # TODO: `types` adapted fst:::print.fst.metadata(); find a more robust
+      #       way to infer column types
+      types <- c("character", "integer", "numeric", "logical", "factor")
+      ans <- new(types[metadata$ColumnTypes[1L]])
+      dim(ans) <- ans_dim
     } else {
-      # TODO: Is it possible to read arbitrary rows of fst file instead of
-      #       iterating over [from, to]-ranges?
-      rows_as_ranges <- IRanges(rows, width = 1L)
-      reduced_ranges <- reduce(rows_as_ranges)
-
-      froms <- start(reduced_ranges)
-      tos <- end(reduced_ranges)
-      ans_list <- mapply(function(from, to) {
-        # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
-        #       fst file directly into a matrix of appropriate dimensions?
-        as.matrix(read.fst(x@file, columns = columns, from = from, to = to))
-      }, from = froms, to = tos, SIMPLIFY = FALSE)
-      ans <- do.call(rbind, ans_list)
-      # NOTE: Need to rearrange if row indices are unsorted and/or contain
-      #       duplicates
-      if (is.unsorted(rows) || anyDuplicated(rows)) {
-        ol <- findOverlaps(rows_as_ranges, sort(rows_as_ranges))
-        ans <- ans[subjectHits(ol), , drop = FALSE]
+      if (is.numeric(columns)) {
+        # NOTE: fst::read.fst() requires column names rather than indices
+        columns <- colnames(x)[columns]
+      }
+      if (is.null(rows)) {
+        ans <- read.fst(path = x@file,
+                        columns = columns,
+                        from = 1,
+                        to = NULL,
+                        as.data.table = as.data.table)
+      } else {
+        rows_as_ranges <- IRanges(rows, width = 1L)
+        reduced_ranges <- reduce(rows_as_ranges)
+        froms <- start(reduced_ranges)
+        tos <- end(reduced_ranges)
+        ans_list <- mapply(function(from, to) {
+          read.fst(path = x@file,
+                   columns = columns,
+                   from = from,
+                   to = to,
+                   as.data.table = FALSE)
+        }, from = froms, to = tos, SIMPLIFY = FALSE)
+        ans <- do.call(rbind, ans_list)
+        # NOTE: Need to rearrange if row indices are unsorted and/or contain
+        #       duplicates
+        if (is.unsorted(rows) || anyDuplicated(rows)) {
+          ol <- findOverlaps(rows_as_ranges, sort(rows_as_ranges))
+          ans <- ans[subjectHits(ol), , drop = FALSE]
+        }
       }
     }
+    ans
   }
-  ans
-}
 
 #' @importMethodsFrom DelayedArray extract_array
 #' @export
-setMethod("extract_array", "fstArraySeed", .extract_array_from_fstArraySeed)
+setMethod("extract_array", "fstArraySeed", function(x, index) {
+  # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
+  #       fst file directly into a matrix of appropriate dimensions?
+  as.matrix(.extract_data_frame_from_fstArraySeed(x = x,
+                                                  index = index,
+                                                  as.data.table = FALSE))
+})
 
 ### ----------------------------------------------------------------------------
 ### fstArraySeed() constructer
@@ -156,6 +164,47 @@ setValidity2("fstArray", .validate_fstArray)
 setAs("ANY", "fstMatrix",
       function(from) as(as(from, "fstArray"), "fstMatrix")
 )
+
+### ----------------------------------------------------------------------------
+### as.matrix
+###
+
+# NOTE: A shortcut to coerce a fstMatrix to a matrix; this avoids
+#       several checks in the as.array,DelayedArray-method, as well as some
+#       overhead from S4 method dispatch
+# NOTE: Defining as.matrix() rather than as.array() because fstArray currently
+#       only support 2-dimensional arrays (matrices) and because as.array()
+#       called on a data.frame will break whereas as.matrix() will work
+#' @importFrom DelayedArray seed
+#' @export
+setMethod("as.matrix", "fstMatrix", function(x, ...) {
+  # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
+  #       fst file directly into a matrix of appropriate dimensions?
+  as.matrix(.extract_data_frame_from_fstArraySeed(x = seed(x),
+                                                  index = unname(x@index),
+                                                  as.data.table = FALSE))
+})
+
+#' @importFrom DelayedArray seed
+#' @export
+setMethod("as.data.frame", "fstMatrix", function(x, ...) {
+  .extract_data_frame_from_fstArraySeed(x = seed(x),
+                                        index = unname(x@index),
+                                        as.data.table = FALSE)
+})
+
+# TODO: This would introduce a dependency on data.table, but it would nice to
+#       only have this in Suggests rather than Imports. I don't know if it's
+#       possible to have data.table in Suggests and still define an
+#       as.data.table,fstMatrix-method
+# #' @importFrom data.table
+# #' @importFrom DelayedArray seed
+# #' @export
+# setMethod("as.data.table", "fstMatrix", function(x, ...) {
+#   .extract_data_frame_from_fstArraySeed(x = seed(x),
+#                                         index = unname(x@index),
+#                                         as.data.table = TRUE)
+# })
 
 ### ----------------------------------------------------------------------------
 ### Constructor
