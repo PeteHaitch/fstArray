@@ -22,17 +22,21 @@ the [**fst**](https://cran.r-project.org/package=fst) file format. **fstArray**
 provides a convenient way to store matrix-like data in an `.fst` file and 
 operate on it using delayed operations and block processing.
 
-**fstArray** is currently an experimental package.  The `fst` file format is 
-designed for serializing data frames. Therefore, **fstArray** can only handle 
-2-dimensional arrays (matrices), which it does by (ab)using the `fst` file 
-format to store columns of the matrix as columns of the serialized data frame. 
-Consequently, **fstArray** is best used for tasks where data are processed 
-column-wise and, ideally, contiguously by row.
+The `fst` file format is designed for serializing data frames. Therefore, 
+**fstArray** can only handle 2-dimensional arrays (matrices), which it does by 
+(ab)using the `fst` file format to store columns of the matrix as columns of 
+the serialized data frame. Consequently, **fstArray** is best used for tasks 
+where data are processed column-wise (or by all columns at once) and, ideally, 
+by processing contiguous rows.
 
 [**HDF5Array**](http://bioconductor.org/packages/HDF5Array/) is the obvious 
-alternative to **fstArray**. It provides arrays of arbitrary dimension and 
-allows alternative chunking and serialization strategies to better support 
-arbitrary data access patterns.
+alternative to **fstArray**. The `HDF5` file format provides arrays of 
+arbitrary dimension and allows alternative chunking and serialization 
+strategies to better support arbitrary data access patterns. 
+
+In initial testing I find that **fstArray** is much faster than **HDF5Array** 
+at writing data to disk and is generally faster at reading data from disk, 
+surprisingly often even when reading data using sub-optimal access patterns.
 
 ## Installation
 
@@ -58,37 +62,68 @@ library(microbenchmark)
 ```
 
 Here's a simple example comparing the time to write the data to disk and read 
-it back into memory. The data are a 'long' matrix with 10 million rows and 
-10 columns filled with pseudorandom numbers between 0 and 1.
+subsets of the data back into memory using **fstArray** and **HDF5Array**. 
+**fstArray** and **HDF5Array** are compared without and with data  
+compression[^compression]. To make the results more comparable, we chunk the 
+*HDF5Array* by column when using compression, mimicing the storage scheme of 
+the *fstArray*. 
 
-**fstArray** and **HDF5Array** are compared both without compression and using 
-their default compression levels. To make the results more comparable, we chunk 
-the *HDF5Array* by column when using compression, mimicing the storage scheme 
-of the *fstArray*.
+[^compression]: The level of compression is the default used by **HDF5Array**, scaled for use with **fstArray**.
 
-### Writing data to disk
+The data are a 'long' matrix with 10 million rows and 10 columns filled with 
+pseudorandom numbers between 0 and 1.
 
-First, serialization. `writefstArray()` is many times faster than 
-`writeHDF5Array()`, both without or with compression. Remarkably, in this case 
-using compression in `writefstArray()` comes at no additional time cost, and 
-potentially even a speed-up. Also remarkable is that `writefstArray()` must currently coerce the matrix, `x`, to a data frame before writing to disk, and 
-yet it is still many times faster than `writeHDF5Array()`[^coercion].
-
-[^coercion]: This coercion and its associated costs may be avoided in future versions of **fstArray**, bringing even better performance.
-
-**TODO:** Demonstate on data with better compressibility?
-
-```{r writing_data}
+```{r sim_data}
 # Simulate a 'long' matrix with numeric data
 nrow <- 1e7
 ncol <- 10
 x <- matrix(runif(nrow * ncol), 
             ncol = ncol, 
             dimnames = list(NULL, letters[seq_len(ncol)]))
+```
+
+
+**TODO:** Also demonstate on data with better compressibility (e.g. 
+sequencing coverage-like data)
+
+### Summary of results
+
+**fstArray** is much faster than **HDF5Array** at writing data to disk,
+especially for situations where data compression is desired. 
+
+**fstArray** is slightly-to-noticeably faster than **HDF5Array** when reading 
+contiguous rows of data into memory as an ordinary _matrix_, with the 
+performance gap increasing when data compression is used. This is the best-case 
+data access pattern for a *fstArray*.
+
+As expected, **fstArray** is slower than **HDF5Array** when reading random rows 
+of uncompressed data into memory as an ordinary matrix. Surprisingly, however, 
+**fstArray** is faster than **HDF5Array** on this test when data compression is 
+used.
+
+Finally, the worst-case data access pattern for **fstArray** is reading random 
+elements of data into memory as an ordinary vector. Surprisingly, **fstArray** 
+is 2x faster than **HDF5Array** on this benchmark.
+
+### Writing data to disk
+
+**TODO**: Revisit text after re-running benchmarking
+
+`writefstArray()` is many times faster than `writeHDF5Array()`, both without or 
+with compression. Remarkably, in this case using compression in 
+`writefstArray()` comes at no additional time cost, and potentially even a 
+speed-up. Also remarkable is that `writefstArray()` must currently coerce the 
+matrix, `x`, to a data frame before writing to disk, and yet it is still many 
+times faster than `writeHDF5Array()`[^coercion].
+
+[^coercion]: This coercion and its associated costs may be avoided in future versions of **fstArray**, bringing even better performance.
+
+```{r writing_data}
 
 # Compression levels
 # NOTE: Amount of HDF5 compression (`level`) is on a scale of {0, 1, ..., 9}
-hdf5_compression <- 6L
+hdf5_compression <- getHDF5DumpCompressionLevel()
+hdf5_compression
 # NOTE: Amount of fst compression (`compress`) is on a scale of {0, 1, ..., 100}
 fst_compression <- as.integer(hdf5_compression / 9 * 101)
 
@@ -111,6 +146,9 @@ microbenchmark(
 ```
 
 ### Loading data into memory
+
+**TODO**: Revisit text after re-running benchmarking
+
 
 We now compare the performance of loading the data into memory as an ordinary
 matrix. We first create *fstArray* and *HDF5Array* representations of the data
@@ -156,6 +194,10 @@ all.equal(as.matrix(fst_array_no_compression),
           check.attributes = FALSE)
 ```
 
+**TODO:** Table of file sizes
+
+#### Loading all data into memory
+
 It is faster to load an entire *fstArray* than an entire *HDF5Array*. This is 
 despite **fstArray** currently having to do a coercion from a data frame to a 
 matrix when loading data into memory[^coercion].
@@ -165,10 +207,12 @@ matrix when loading data into memory[^coercion].
 microbenchmark(
   fst_no_compression = as.matrix(fst_array_no_compression),
   fst_compression = as.matrix(fst_array_compression),
-  hdf5_no_compress = as.matrix(hdf5_array_no_compression),
+  hdf5_no_compression= as.matrix(hdf5_array_no_compression),
   hdf5_compression = as.matrix(hdf5_array_compression),
   times = 10)
 ```
+
+#### Loading contiguous rows of data into memory
 
 Now, loading 10,000 contiguous rows from the middle of the matrix. Again, 
 using an *fstArray* is a faster than an *HDF5Array*.
@@ -180,10 +224,18 @@ rows <- 56001:66000
 microbenchmark(
   fst_no_compression = as.matrix(fst_array_no_compression[rows, ]),
   fst_compression = as.matrix(fst_array_compression[rows, ]),
-  hdf5_no_compress = as.matrix(hdf5_array_no_compression[rows, ]),
+  hdf5_no_compression= as.matrix(hdf5_array_no_compression[rows, ]),
   hdf5_compression = as.matrix(hdf5_array_compression[rows, ]),
   times = 10)
+all.equal(as.matrix(fst_array_no_compression[rows, ]),
+          as.matrix(fst_array_compression[rows, ]))
+all.equal(as.matrix(fst_array_no_compression[rows, ]),
+          as.matrix(hdf5_array_no_compression[rows, ]))
+all.equal(as.matrix(fst_array_no_compression[rows, ]),
+          as.matrix(hdf5_array_compression[rows, ]))
 ```
+
+#### Loading random rows of data into memory
 
 Finally, we load 1,000 randomly selected rows, the worst data access pattern 
 for an *fstArray*. Unsurprisingly, an *fstArray* is slower than *HDF5Array*, 
@@ -196,7 +248,35 @@ rows <- sample(nrow(x), 1000)
 microbenchmark(
   fst_no_compression = as.matrix(fst_array_no_compression[rows, ]),
   fst_compression = as.matrix(fst_array_compression[rows, ]),
-  hdf5_no_compress = as.matrix(hdf5_array_no_compression[rows, ]),
+  hdf5_no_compression= as.matrix(hdf5_array_no_compression[rows, ]),
   hdf5_compression = as.matrix(hdf5_array_compression[rows, ]),
   times = 10)
+all.equal(as.matrix(fst_array_no_compression[rows, ]),
+          as.matrix(fst_array_compression[rows, ]))
+all.equal(as.matrix(fst_array_no_compression[rows, ]),
+          as.matrix(hdf5_array_no_compression[rows, ]))
+all.equal(as.matrix(fst_array_no_compression[rows, ]),
+          as.matrix(hdf5_array_compression[rows, ]))
 ```
+
+#### Loading random elements of data into memory
+
+```{r random_elements}
+# Benchmark loading 100,000 random elements of data from disk as an ordinary 
+# vector
+elements <- sample(length(x), 100000)
+microbenchmark(
+  fst_no_compression = fst_array_no_compression[elements],
+  fst_compression = fst_array_compression[elements],
+  hdf5_no_compression= hdf5_array_no_compression[elements],
+  hdf5_compression = hdf5_array_compression[elements],
+  times = 10)
+all.equal(fst_array_no_compression[elements],
+          fst_array_compression[elements])
+all.equal(fst_array_no_compression[elements],
+          hdf5_array_no_compression[elements])
+all.equal(fst_array_no_compression[elements],
+          hdf5_array_compression[elements])
+```
+
+
