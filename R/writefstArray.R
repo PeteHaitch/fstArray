@@ -12,7 +12,7 @@
 ### implements an fst realization sink.
 ###
 
-#' @export
+# #' @export
 setClass("fstRealizationSink",
          contains = "RealizationSink",
          representation(
@@ -26,7 +26,7 @@ setClass("fstRealizationSink",
 #       like HDF5RealizationSink)
 
 #' @importFrom S4Vectors new2
-#' @export
+# #' @export
 fstRealizationSink <- function(dim, file = NULL, compress = NULL) {
   if (is.null(file)) {
     file <- getfstDumpFile(for.use = TRUE)
@@ -51,7 +51,7 @@ fstRealizationSink <- function(dim, file = NULL, compress = NULL) {
 #       block will be in the fst file after running writefstArray()
 #' @importFrom DelayedArray makeNindexFromArrayViewport
 #' @importFrom fst write.fst
-#' @export
+# #' @export
 setMethod("write_block_to_sink", "fstRealizationSink",
           function(block, sink, viewport) {
             stopifnot(identical(dim(sink), refdim(viewport)),
@@ -101,7 +101,7 @@ setAs("fstRealizationSink", "DelayedArray",
 # Return a fstArray object pointing to the newly written fst dataset on disk.
 # TODO: How to handle rownames?
 #' @importFrom S4Vectors isTRUEorFALSE
-#' @export
+# #' @export
 writefstArray <- function(x, file = NULL, compress = NULL, verbose = FALSE) {
   x_dim <- dim(x)
   if (length(x_dim) != 2L) {

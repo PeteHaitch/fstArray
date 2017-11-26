@@ -110,7 +110,7 @@ fstCreateFile <- function(file) {
 ### get/setfstDumpDir()
 ###
 
-#' @export
+# #' @export
 getfstDumpDir <- function() {
   get("dir", envir = .dump_settings_envir)
 }
@@ -127,7 +127,7 @@ getfstDumpDir <- function() {
 
 # Called by .onLoad() hook (see zzz.R file).
 #' @importFrom S4Vectors isSingleString wmsg
-#' @export
+# #' @export
 setfstDumpDir <- function(dir) {
   if (missing(dir)) {
     dir <- file.path(tempdir(), "fstArray_dump")
@@ -148,7 +148,7 @@ setfstDumpDir <- function(dir) {
 # Set the current fst dump file. Create it as an empty fst file if it doesn't
 # exist yet.
 #' @importFrom S4Vectors isSingleString
-#' @export
+# #' @export
 setfstDumpFile <- function(file) {
   if (missing(file)) {
     .set_dump_autofiles_mode()
@@ -168,7 +168,7 @@ setfstDumpFile <- function(file) {
 
 # Return the *absolute path* to the dump file.
 #' @importFrom S4Vectors isTRUEorFALSE
-#' @export
+# #' @export
 getfstDumpFile <- function(for.use = FALSE) {
   if (!isTRUEorFALSE(for.use)) {
     stop("'for.use' must be TRUE or FALSE")
@@ -201,13 +201,13 @@ normalize_compression_level <- function(compress) {
 
 # TODO: Update default compresion level to fst::write_fst default
 # Called by .onLoad() hook (see zzz.R file).
-#' @export
+# #' @export
 setfstDumpCompressionLevel <- function(compress = 0L) {
   compress <- normalize_compression_level(compress)
   assign("compress", compress, envir = .dump_settings_envir)
 }
 
-#' @export
+# #' @export
 getfstDumpCompressionLevel <- function() {
   get("compress", envir = .dump_settings_envir)
 }
