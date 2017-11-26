@@ -58,7 +58,7 @@ library(microbenchmark)
 ```
 
 Here's a simple example comparing the time to write the data to disk and read 
-it back into memory. The data are a 'long' matrix with 1 million rows and 
+it back into memory. The data are a 'long' matrix with 10 million rows and 
 10 columns filled with pseudorandom numbers between 0 and 1.
 
 **fstArray** and **HDF5Array** are compared both without compression and using 
@@ -80,7 +80,7 @@ yet it is still many times faster than `writeHDF5Array()`[^coercion].
 
 ```{r writing_data}
 # Simulate a 'long' matrix with numeric data
-nrow <- 1e6
+nrow <- 1e7
 ncol <- 10
 x <- matrix(runif(nrow * ncol), 
             ncol = ncol, 
@@ -107,7 +107,7 @@ microbenchmark(
   hdf5_compression = writeHDF5Array(x = x, 
                                     chunk_dim = c(nrow(x), 1L),
                                     level = hdf5_compression),
-  times = 4)
+  times = 5)
 ```
 
 ### Loading data into memory
