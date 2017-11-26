@@ -8,6 +8,6 @@ Author: Peter Hickey
 Maintainer: Peter Hickey <peter.hickey@gmail.com>
 biocViews: Infrastructure, DataRepresentation
 Depends: R (>= 3.4), methods, DelayedArray (>= 0.5.4)
-Imports: fst, tools, S4Vectors, IRanges, stats
+Imports: fst, tools, S4Vectors, IRanges, BiocGenerics
 License: Artistic-2.0
 RoxygenNote: 6.0.1

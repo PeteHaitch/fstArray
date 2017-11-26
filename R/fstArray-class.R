@@ -44,8 +44,8 @@ setMethod("dimnames", "fstArraySeed", function(x) {
 
 #' @importFrom fst fst.metadata read.fst
 #' @importFrom IRanges findOverlaps IRanges reduce
-#' @importFrom S4Vectors .Call2 subjectHits wmsg
-#' @importFrom stats end start
+#' @importFrom S4Vectors .Call2 subjectHits
+#' @importFrom BiocGenerics end start
 # NOTE: rows must be a integer vector (although I think an fst file can have
 #       > .Machine$integer.max rows)
 # NOTE: cols must be a character vector
@@ -74,7 +74,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
     } else {
       # TODO: Is it possible to read arbitrary rows of fst file instead of
       #       iterating over [from, to]-ranges?
-      rows_as_ranges <- IRanges(rows, width = 1)
+      rows_as_ranges <- IRanges(rows, width = 1L)
       reduced_ranges <- reduce(rows_as_ranges)
 
       froms <- start(reduced_ranges)
@@ -138,9 +138,10 @@ setAs("fstArray", "fstMatrix", function(from) new("fstMatrix", from))
 # NOTE: For internal use only.
 setMethod("matrixClass", "fstArray", function(x) "fstMatrix")
 
+#' @importFrom DelayedArray seed
 #' @importFrom S4Vectors wmsg
 .validate_fstArray <- function(x){
-  if (!is(x@seed, "fstArraySeed")) {
+  if (!is(seed(x), "fstArraySeed")) {
     return(wmsg("'x@seed' must be a fstArraySeed object"))
   }
   if (!DelayedArray:::is_pristine(x)) {
