@@ -2,6 +2,8 @@
 ### fstArray objects
 ### ----------------------------------------------------------------------------
 
+#' @include utils.R
+
 #' @export
 setClass("fstArraySeed",
          contains = "Array",

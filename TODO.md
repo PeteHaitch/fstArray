@@ -1,1 +1,3 @@
+- [ ] The 'proper' `writefstArray()` implementation will only work once **fst** supports appending directly on/to disk. Fortunately, [this is planned for `v0.9.0`](https://github.com/fstpackage/fst/issues/91)
 - [ ] s/fstArray/fstMatrix/ ? After all, only 2-dimensional arrays are supported because an fst file is designed to support data frames. Hervé notes in the 'Implementing A DelayedArray Backend' that only the fstMatrix form is needed, but it seems a good idea to future-proof the package name by calling fstArray
+- [ ] Avoid using copy of HDF5Array internal lock file stuff? Might use a IPCMutex (in BiocParallel or https://github.com/mtmorgan/IPCMutex)
