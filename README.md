@@ -3,6 +3,8 @@
 
 # fstArray
 
+[![Travis-CI Build Status](https://travis-ci.org/PeteHaitch/fstArray.svg?branch=master)](https://travis-ci.org/PeteHaitch/fstArray)
+
 **fstArray** provides an on-disk backend for a
 [*DelayedArray*](http://bioconductor.org/packages/DelayedArray/) object
 using the [**fst**](https://cran.r-project.org/package=fst) file format.
