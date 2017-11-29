@@ -2,7 +2,7 @@ Package: fstArray
 Title: 'fst' backend for DelayedArray objects
 Description: An array-like container for convenient access and manipulation
 	of fst datasets. Supports delayed operations and block processing.
-Version: 0.0.0.9002
+Version: 0.0.0.9003
 Encoding: UTF-8
 Author: Peter Hickey
 Maintainer: Peter Hickey <peter.hickey@gmail.com>
@@ -12,9 +12,5 @@ Imports: fst, tools, S4Vectors, IRanges, BiocGenerics
 License: Artistic-2.0
 RoxygenNote: 6.0.1
 Collate: 
-    'utils.R'
-    'dump-management.R'
     'fstArray-class.R'
     'fstArray-package.R'
-    'writefstArray.R'
-    'zzz.R'
