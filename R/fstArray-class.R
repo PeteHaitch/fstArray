@@ -169,22 +169,6 @@ setAs("ANY", "fstMatrix",
 ### as.matrix
 ###
 
-# NOTE: A shortcut to coerce a fstMatrix to a matrix; this avoids
-#       several checks in the as.array,DelayedArray-method, as well as some
-#       overhead from S4 method dispatch
-# NOTE: Defining as.matrix() rather than as.array() because fstArray currently
-#       only support 2-dimensional arrays (matrices) and because as.array()
-#       called on a data.frame will break whereas as.matrix() will work
-#' @importFrom DelayedArray seed
-#' @export
-setMethod("as.matrix", "fstMatrix", function(x, ...) {
-  # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
-  #       fst file directly into a matrix of appropriate dimensions?
-  as.matrix(.extract_data_frame_from_fstArraySeed(x = seed(x),
-                                                  index = unname(x@index),
-                                                  as.data.table = FALSE))
-})
-
 #' @importFrom DelayedArray seed
 #' @export
 setMethod("as.data.frame", "fstMatrix", function(x, ...) {
