@@ -45,7 +45,7 @@ access patterns.
 future version of **fstArray** once the core **fst** library supports 
 [appending data directly on/to disk](https://github.com/fstpackage/fst/issues/91). 
 For now, an _fstArray_ can be created by wrapping a `fst` file created by 
-`fst::write.fst()`. 
+`fst::write_fst()`. 
 
 ## Installation
 
@@ -60,6 +60,7 @@ devtools::install_github("PeteHaitch/fstarray/")
 
 ```{r real_pkg_load, message = FALSE, echo = FALSE}
 devtools::load_all()
+library(fst)
 library(HDF5Array)
 library(microbenchmark)
 ```
@@ -132,12 +133,12 @@ fst_compression_level <- as.integer(hdf5_compression_level / 9 * 101)
 # NOTE: Each fst file can only contain one dataset whereas a HDF5 file can 
 #       contain multiple datasets
 fst_no_compression <- tempfile(fileext = ".fst")
-fst::write.fst(x = as.data.frame(x),
+fst::write_fst(x = as.data.frame(x),
                path = fst_no_compression,
                compress = 0)
 fstarray_no_compression <- fstArray(fst_no_compression)
 fst_with_compression <- tempfile(fileext = ".fst")
-fst::write.fst(x = as.data.frame(x),
+fst::write_fst(x = as.data.frame(x),
                path = fst_with_compression,
                compress = fst_compression_level)
 fstarray_with_compression <- fstArray(fst_with_compression)
@@ -190,6 +191,7 @@ matrix when loading data into memory[^coercion].
 
 ```{r read_all_data}
 # Benchmark loading all data from disk as an ordinary matrix
+# TODO: Make a plot of result
 microbenchmark(
   fstarray_no_compression = as.matrix(fstarray_no_compression),
   fstarray_with_compression = as.matrix(fstarray_with_compression),
@@ -205,6 +207,8 @@ using an *fstArray* is a faster than an *HDF5Array*.
 
 ```{r read_contiguous_rows}
 rows <- 500001:600000
+# TODO: Make a plot of result (either ggplot2::autoplot() or what's done in fst
+#       README)
 microbenchmark(
   fstarray_no_compression = as.matrix(fstarray_no_compression[rows, ]),
   fstarray_with_compression = as.matrix(fstarray_with_compression[rows, ]),
