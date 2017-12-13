@@ -16,4 +16,3 @@ Collate:
     'fstArray-class.R'
     'fstArray-package.R'
 Roxygen: list(markdown = TRUE)
-LazyData: true
