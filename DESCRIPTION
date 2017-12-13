@@ -9,9 +9,11 @@ Maintainer: Peter Hickey <peter.hickey@gmail.com>
 biocViews: Infrastructure, DataRepresentation
 Depends: R (>= 3.4), methods, DelayedArray (>= 0.5.7)
 Imports: fst (>= 0.8.0), tools, S4Vectors, IRanges, BiocGenerics
+Suggests: SummarizedExperiment
 License: Artistic-2.0
 RoxygenNote: 6.0.1
 Collate: 
     'fstArray-class.R'
     'fstArray-package.R'
 Roxygen: list(markdown = TRUE)
+LazyData: true

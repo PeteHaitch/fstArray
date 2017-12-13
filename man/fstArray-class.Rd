@@ -39,6 +39,54 @@ A fstArray object is just a fstArraySeed wrapped in a
 \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} object.
 }
 }
+\examples{
+# ----------------------------------------------------------------------
+# CONSTRUCTION
+# ----------------------------------------------------------------------
+
+# Simulate some data in a data frame and write to disk as an 'fst' file
+library(fst)
+x <- as.data.frame(replicate(10, runif(10000)))
+fst_file <- tempfile(fileext = ".fst")
+write_fst(x, fst_file)
+
+# Construct an fstArray
+fst_array <- fstArray(fst_file)
+fst_array
+
+# ----------------------------------------------------------------------
+# dim/dimnames
+# ----------------------------------------------------------------------
+
+dim(fst_array)
+
+dimnames(fst_array)
+dimnames(fst_array) <- list(paste0("gene", seq_len(nrow(fst_array))),
+                            paste0("S", seq_len(ncol(fst_array))))
+fst_array
+
+# ----------------------------------------------------------------------
+# SLICING (A.K.A. SUBSETTING)
+# ----------------------------------------------------------------------
+
+fst_array2 <- drop(fst_array[31:40, c("S3", "S6")])
+fst_array2
+
+dim(fst_array2)
+as.array(fst_array2)
+stopifnot(identical(dim(as.array(fst_array2)), dim(fst_array2)))
+stopifnot(identical(dimnames(as.array(fst_array2)), dimnames(fst_array2)))
+# ----------------------------------------------------------------------
+# SummarizedExperiment OBJECTS WITH DELAYED ASSAYS
+# ----------------------------------------------------------------------
+
+library(SummarizedExperiment)
+se <- SummarizedExperiment(fst_array)
+se
+
+stopifnot(validObject(se, complete = TRUE))
+
+}
 \seealso{
 \itemize{
 \item \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} objects.
