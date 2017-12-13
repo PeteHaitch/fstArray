@@ -3,7 +3,8 @@
 
 # fstArray
 
-[![Travis-CI Build Status](https://travis-ci.org/PeteHaitch/fstArray.svg?branch=master)](https://travis-ci.org/PeteHaitch/fstArray)
+[![Travis-CI Build
+Status](https://travis-ci.org/PeteHaitch/fstArray.svg?branch=master)](https://travis-ci.org/PeteHaitch/fstArray)
 
 **fstArray** provides an on-disk backend for a
 [*DelayedArray*](http://bioconductor.org/packages/DelayedArray/) object
@@ -35,7 +36,7 @@ added in a future version of **fstArray** once the core **fst** library
 supports [appending data directly on/to
 disk](https://github.com/fstpackage/fst/issues/91). For now, an
 *fstArray* can be created by wrapping a `fst` file created by
-`fst::write.fst()`.
+`fst::write_fst()`.
 
 ## Installation
 
@@ -116,12 +117,12 @@ fst_compression_level <- as.integer(hdf5_compression_level / 9 * 101)
 # NOTE: Each fst file can only contain one dataset whereas a HDF5 file can 
 #       contain multiple datasets
 fst_no_compression <- tempfile(fileext = ".fst")
-fst::write.fst(x = as.data.frame(x),
+fst::write_fst(x = as.data.frame(x),
                path = fst_no_compression,
                compress = 0)
 fstarray_no_compression <- fstArray(fst_no_compression)
 fst_with_compression <- tempfile(fileext = ".fst")
-fst::write.fst(x = as.data.frame(x),
+fst::write_fst(x = as.data.frame(x),
                path = fst_with_compression,
                compress = fst_compression_level)
 fstarray_with_compression <- fstArray(fst_with_compression)
@@ -154,10 +155,10 @@ instances:
 
 | name                         | class       | compression | size (bytes) |
 | :--------------------------- | :---------- | :---------- | -----------: |
-| fstarray\_no\_compression    | *fstArray*  | FALSE       |     80000262 |
-| fstarray\_with\_compression  | *fstArray*  | TRUE        |     51549064 |
+| fstarray\_no\_compression    | *fstArray*  | FALSE       |     80000622 |
+| fstarray\_with\_compression  | *fstArray*  | TRUE        |     70537581 |
 | hdf5array\_no\_compression   | *HDF5Array* | FALSE       |     80000467 |
-| hdf5array\_with\_compression | *HDF5Array* | TRUE        |     52044232 |
+| hdf5array\_with\_compression | *HDF5Array* | TRUE        |     52043398 |
 
 #### Loading all data into memory
 
@@ -167,6 +168,7 @@ data frame to a matrix when loading data into memory\[^coercion\].
 
 ``` r
 # Benchmark loading all data from disk as an ordinary matrix
+# TODO: Make a plot of result
 microbenchmark(
   fstarray_no_compression = as.matrix(fstarray_no_compression),
   fstarray_with_compression = as.matrix(fstarray_with_compression),
@@ -174,16 +176,16 @@ microbenchmark(
   hdf5array_with_compression = as.matrix(hdf5array_with_compression),
   times = 10)
 #> Unit: milliseconds
-#>                        expr       min       lq      mean    median
-#>     fstarray_no_compression  87.22516 125.3228  195.0390  227.4134
-#>   fstarray_with_compression 194.48685 205.0601  237.7612  215.9094
-#>    hdf5array_no_compression 474.02809 560.4660  606.5597  635.2825
-#>  hdf5array_with_compression 925.15713 934.6240 1026.2005 1033.9560
-#>         uq       max neval cld
-#>   250.7414  271.6434    10 a  
-#>   237.0523  334.9566    10 a  
-#>   667.1981  670.9407    10  b 
-#>  1052.3974 1155.8843    10   c
+#>                        expr      min       lq     mean   median       uq
+#>     fstarray_no_compression 102.5663 127.5894 140.7778 135.0653 150.5365
+#>   fstarray_with_compression 140.0467 140.6319 186.4727 157.8618 192.6200
+#>    hdf5array_no_compression 293.3690 304.2665 370.3637 365.1818 424.6711
+#>  hdf5array_with_compression 666.2197 726.2155 752.4901 753.8953 782.6305
+#>       max neval cld
+#>  198.1223    10 a  
+#>  306.8345    10 a  
+#>  494.7491    10  b 
+#>  819.0964    10   c
 ```
 
 #### Loading contiguous rows of data into memory
@@ -193,6 +195,8 @@ Again, using an *fstArray* is a faster than an *HDF5Array*.
 
 ``` r
 rows <- 500001:600000
+# TODO: Make a plot of result (either ggplot2::autoplot() or what's done in fst
+#       README)
 microbenchmark(
   fstarray_no_compression = as.matrix(fstarray_no_compression[rows, ]),
   fstarray_with_compression = as.matrix(fstarray_with_compression[rows, ]),
@@ -201,15 +205,15 @@ microbenchmark(
   times = 10)
 #> Unit: milliseconds
 #>                        expr       min        lq      mean    median
-#>     fstarray_no_compression  71.61974  77.18624  87.64469  88.38161
-#>   fstarray_with_compression  86.87007  87.23516 101.77223  98.74093
-#>    hdf5array_no_compression 129.37389 138.05747 146.56411 142.37873
-#>  hdf5array_with_compression 480.86832 492.38430 511.25762 511.38382
+#>     fstarray_no_compression  57.57056  58.95272  76.35915  69.73875
+#>   fstarray_with_compression  76.18813  80.73812  88.81016  85.99229
+#>    hdf5array_no_compression 106.34253 116.09887 138.27331 146.25949
+#>  hdf5array_with_compression 470.16741 474.82125 495.50887 489.72496
 #>         uq      max neval cld
-#>   95.26093 104.0776    10 a  
-#>  107.86351 129.1088    10 a  
-#>  156.56137 169.8482    10  b 
-#>  523.76236 553.9024    10   c
+#>   90.47825 123.1876    10 a  
+#>   91.30427 118.1874    10 a  
+#>  156.64767 162.8812    10  b 
+#>  518.77466 531.4070    10   c
 ```
 
 #### Loading random rows of data into memory
@@ -228,16 +232,16 @@ microbenchmark(
   hdf5array_with_compression = as.matrix(hdf5array_with_compression[rows, ]),
   times = 10)
 #> Unit: seconds
-#>                        expr       min        lq      mean    median
-#>     fstarray_no_compression  8.002406  8.230121  8.341033  8.377256
-#>   fstarray_with_compression 10.829110 11.145667 11.162961 11.171536
-#>    hdf5array_no_compression 13.232171 13.264697 13.309880 13.300659
-#>  hdf5array_with_compression 13.709490 13.717944 13.806906 13.784387
+#>                        expr       min        lq     mean    median
+#>     fstarray_no_compression  7.712612  7.808474  7.94896  7.963342
+#>   fstarray_with_compression 11.067966 11.187916 11.37206 11.289247
+#>    hdf5array_no_compression 13.737002 13.769707 13.80272 13.805314
+#>  hdf5array_with_compression 14.156510 14.236498 14.29448 14.296227
 #>         uq       max neval  cld
-#>   8.484604  8.606015    10 a   
-#>  11.257842 11.344139    10  b  
-#>  13.345654 13.404611    10   c 
-#>  13.834393 14.095220    10    d
+#>   7.989697  8.275694    10 a   
+#>  11.532162 11.854357    10  b  
+#>  13.831551 13.903240    10   c 
+#>  14.324118 14.550491    10    d
 ```
 
 #### Loading random elements of data into memory
@@ -257,15 +261,15 @@ microbenchmark(
   times = 10)
 #> Unit: seconds
 #>                        expr      min       lq     mean   median       uq
-#>     fstarray_no_compression 1.471993 1.492619 1.501118 1.496295 1.504998
-#>   fstarray_with_compression 1.551851 1.587602 1.616991 1.594200 1.636589
-#>    hdf5array_no_compression 2.519001 2.551852 2.610002 2.580096 2.691903
-#>  hdf5array_with_compression 3.251076 3.325241 3.432805 3.441513 3.534551
+#>     fstarray_no_compression 1.305587 1.317115 1.369593 1.358739 1.394148
+#>   fstarray_with_compression 1.977945 1.997501 2.066805 2.047448 2.126624
+#>    hdf5array_no_compression 2.397374 2.415154 2.492379 2.454718 2.594813
+#>  hdf5array_with_compression 3.104193 3.190160 3.269943 3.221916 3.349427
 #>       max neval  cld
-#>  1.541528    10 a   
-#>  1.763489    10  b  
-#>  2.728017    10   c 
-#>  3.609503    10    d
+#>  1.514849    10 a   
+#>  2.244289    10  b  
+#>  2.626823    10   c 
+#>  3.527146    10    d
 ```
 
 1.  The level of compression is the default used by **HDF5Array**,
