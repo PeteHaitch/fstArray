@@ -32,7 +32,7 @@ setMethod("dim", "fstArraySeed", function(x) {
 
 # TODO: fst file has no concept of rownames; how to handle in fstArray?
 #       1. Don't support rownames
-#       2. Store rownames in fstArraySeed (will require care when subsetting)
+#       2. Store rownames in _fstArraySeed_ (will require care when subsetting)
 #' @importFrom fst metadata_fst
 #' @export
 setMethod("dimnames", "fstArraySeed", function(x) {
@@ -178,13 +178,13 @@ fstArraySeed <- function(file, old_format = FALSE) {
 #' @description We provide 2 classes for representing an (on-disk) fst dataset
 #' as an array-like object in R:
 #'
-#' - fstArray: A high-level class, fstArray extends
+#' - _fstArray_: A high-level class, _fstArray_ extends
 #' [DelayedArray::DelayedArray-class]. All the operations available on
-#' [DelayedArray::DelayedArray-class] objects work on fstArray objects.
-#' - fstArraySeed: A low-level class for pointing to a fst dataset. No
-#' operation can be performed directly on an fstArraySeed object. It needs to
-#' be wrapped in a [DelayedArray::DelayedArray-class] or fstArray object first.
-#' A fstArray object is just a fstArraySeed wrapped in a
+#' [DelayedArray::DelayedArray-class] objects work on _fstArray_ objects.
+#' - _fstArraySeed_: A low-level class for pointing to a fst dataset. No
+#' operation can be performed directly on an _fstArraySeed_ object. It needs to
+#' be wrapped in a [DelayedArray::DelayedArray-class] or _fstArray_ object first.
+#' An _fstArray_ object is just an _fstArraySeed_ wrapped in a
 #' [DelayedArray::DelayedArray-class] object.
 #'
 #' @param file The path (as a single character string) to the fst file where
@@ -192,45 +192,46 @@ fstArraySeed <- function(file, old_format = FALSE) {
 #' @param old_format use `TRUE` to read fst files generated with a fst package
 #' version lower than v0.8.0
 #'
-#' @return An fstArray object for `fstArray()`.
+#' @return An _fstArray_ object for `fstArray()`.
 #'
-#' An fstArraySeed object for `fstArraySeed()`.
+#' An _fstArraySeed_ object for `fstArraySeed()`.
 #'
 #' @seealso
+#' - [fst::write_fst()] for writing a data frame to disk as an 'fst' file.
 #' - [DelayedArray::DelayedArray-class] objects.
 #' - [DelayedArray::DelayedArray-utils] for common operations on [DelayedArray::DelayedArray-class] objects
 #' - [base::array] objects in base R.
-#' 
+#'
 #' @examples
 #' # ----------------------------------------------------------------------
 #' # CONSTRUCTION
 #' # ----------------------------------------------------------------------
-#' 
+#'
 #' # Simulate some data in a data frame and write to disk as an 'fst' file
 #' library(fst)
 #' x <- as.data.frame(replicate(10, runif(10000)))
 #' fst_file <- tempfile(fileext = ".fst")
 #' write_fst(x, fst_file)
-#' 
+#'
 #' # Construct an fstArray
 #' fst_array <- fstArray(fst_file)
 #' fst_array
-#' 
+#'
 #' # ----------------------------------------------------------------------
 #' # dim/dimnames
 #' # ----------------------------------------------------------------------
-#' 
+#'
 #' dim(fst_array)
-#' 
+#'
 #' dimnames(fst_array)
 #' dimnames(fst_array) <- list(paste0("gene", seq_len(nrow(fst_array))),
 #'                             paste0("S", seq_len(ncol(fst_array))))
 #' fst_array
-#' 
+#'
 #' # ----------------------------------------------------------------------
 #' # SLICING (A.K.A. SUBSETTING)
 #' # ----------------------------------------------------------------------
-#' 
+#'
 #' fst_array2 <- drop(fst_array[31:40, c("S3", "S6")])
 #' fst_array2
 #'
@@ -247,8 +248,8 @@ fstArraySeed <- function(file, old_format = FALSE) {
 #' se
 #'
 #' stopifnot(validObject(se, complete = TRUE))
-#' 
-# NOTE: These aliases are necessary because I want them in the .Rd but not 
+#'
+# NOTE: These aliases are necessary because I want them in the .Rd but not
 #         with a S4method{} in the 'Usage' section (roxygen2 is doing this)
 #' @rawRd \alias{dim,fstArraySeed-method}
 #' @rawRd \alias{dimnames,fstArraySeed-method}

@@ -21,21 +21,21 @@ the dataset is located.}
 version lower than v0.8.0}
 }
 \value{
-An fstArray object for \code{fstArray()}.
+An \emph{fstArray} object for \code{fstArray()}.
 
-An fstArraySeed object for \code{fstArraySeed()}.
+An \emph{fstArraySeed} object for \code{fstArraySeed()}.
 }
 \description{
 We provide 2 classes for representing an (on-disk) fst dataset
 as an array-like object in R:
 \itemize{
-\item fstArray: A high-level class, fstArray extends
+\item \emph{fstArray}: A high-level class, \emph{fstArray} extends
 \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray}. All the operations available on
-\link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} objects work on fstArray objects.
-\item fstArraySeed: A low-level class for pointing to a fst dataset. No
-operation can be performed directly on an fstArraySeed object. It needs to
-be wrapped in a \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} or fstArray object first.
-A fstArray object is just a fstArraySeed wrapped in a
+\link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} objects work on \emph{fstArray} objects.
+\item \emph{fstArraySeed}: A low-level class for pointing to a fst dataset. No
+operation can be performed directly on an \emph{fstArraySeed} object. It needs to
+be wrapped in a \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} or \emph{fstArray} object first.
+An \emph{fstArray} object is just an \emph{fstArraySeed} wrapped in a
 \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} object.
 }
 }
@@ -89,6 +89,7 @@ stopifnot(validObject(se, complete = TRUE))
 }
 \seealso{
 \itemize{
+\item \code{\link[fst:write_fst]{fst::write_fst()}} for writing a data frame to disk as an 'fst' file.
 \item \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} objects.
 \item \link[DelayedArray:DelayedArray-utils]{DelayedArray::DelayedArray-utils} for common operations on \link[DelayedArray:DelayedArray-class]{DelayedArray::DelayedArray} objects
 \item \link[base:array]{base::array} objects in base R.
