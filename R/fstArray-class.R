@@ -1,6 +1,6 @@
 ### ============================================================================
 ### fstArray objects
-### ----------------------------------------------------------------------------
+###
 
 # TODO: Provide access to other args of fst::read.fst() as slots in class?
 #' @rdname fstArray-class
@@ -8,7 +8,7 @@
 setClass("fstArraySeed",
          contains = "Array",
          slots = c(
-           file = "character",
+           filepath = "character",
            old_format = "logical"
          )
 )
@@ -17,9 +17,10 @@ setClass("fstArraySeed",
 ### dim()
 ###
 
+#' @importFrom fst metadata_fst
 #' @export
 setMethod("dim", "fstArraySeed", function(x) {
-  metadata <- fst::metadata_fst(path = x@file, old_format = x@old_format)
+  metadata <- metadata_fst(path = path(x), old_format = x@old_format)
   # TODO: `NrOfRows` is stored as a double rather than an int; is this an
   #       issue? E.g., construct a fst with > .Machine$integer.max rows and see
   #       what breaks
@@ -36,8 +37,18 @@ setMethod("dim", "fstArraySeed", function(x) {
 #' @importFrom fst metadata_fst
 #' @export
 setMethod("dimnames", "fstArraySeed", function(x) {
-  metadata <- metadata_fst(path = x@file, old_format = x@old_format)
+  metadata <- metadata_fst(path = path(x), old_format = x@old_format)
   list(NULL, metadata$columnNames)
+})
+
+### ----------------------------------------------------------------------------
+### path()
+###
+
+#' @importFrom BiocGenerics path
+#' @export
+setMethod("path", "fstArraySeed", function(object, ...) {
+  object@filepath
 })
 
 ### ----------------------------------------------------------------------------
@@ -71,7 +82,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
     columns <- index[[2L]]
     ans_dim <- DelayedArray:::get_Nindex_lengths(index, dim(x))
     if (any(ans_dim == 0L)) {
-      metadata <- metadata_fst(path = x@file, old_format = x@old_format)
+      metadata <- metadata_fst(path = path(x), old_format = x@old_format)
       # TODO: `types` adapted fst:::print.fst.metadata(); find a more robust
       #       way to infer column types
       types <- c("unknown", "character", "factor", "ordered factor",
@@ -83,7 +94,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
       #       and 'double' then could promote result to 'double' and everything
       #       should work. But, for now, we'll keep
       if (any(column_types != column_types[1L])) {
-        stop(wmsg(x@file, " contains multiple column types: ",
+        stop(wmsg(path(x), " contains multiple column types: ",
                   paste0(types[unique(column_types)], collapse = ", ")))
       }
       type <- types[column_types[[1L]]]
@@ -92,7 +103,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
                     "double" = numeric(),
                     last = NULL)
       if (is.null(ans)) {
-        stop(wmsg(x@file, " contains column type unsupported by fstArray: ",
+        stop(wmsg(path(x), " contains column type unsupported by fstArray: ",
                   type))
       }
       dim(ans) <- ans_dim
@@ -102,7 +113,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
         columns <- colnames(x)[columns]
       }
       if (is.null(rows)) {
-        ans <- read_fst(path = x@file,
+        ans <- read_fst(path = path(x),
                         columns = columns,
                         from = 1,
                         to = NULL,
@@ -114,7 +125,7 @@ setMethod("dimnames", "fstArraySeed", function(x) {
         froms <- start(reduced_ranges)
         tos <- end(reduced_ranges)
         ans_list <- mapply(function(from, to) {
-          read_fst(path = x@file,
+          read_fst(path = path(x),
                    columns = columns,
                    from = from,
                    to = to,
@@ -147,21 +158,16 @@ setMethod("extract_array", "fstArraySeed", function(x, index) {
 ### fstArraySeed() constructer
 ###
 
-#' @importFrom S4Vectors isSingleString isTRUEorFALSE new2 wmsg
-#' @importFrom tools file_path_as_absolute
+#' @importFrom S4Vectors isTRUEorFALSE new2
 #' @rdname fstArray-class
 #' @export
-fstArraySeed <- function(file, old_format = FALSE) {
-  if (!isSingleString(file)) {
-    stop(wmsg("'file' must be a single string specifying the path to ",
-              "the fst file where the dataset is located"))
-  }
+fstArraySeed <- function(filepath, old_format = FALSE) {
+  filepath <- .normarg_filepath(filepath)
   if (!isTRUEorFALSE(old_format)) {
     stop("'old_format' must be TRUE or FALSE")
   }
   # TODO: Check that all columns of fst are of same type (or coercible)?
-  file <- file_path_as_absolute(file)
-  new2("fstArraySeed", file = file, old_format = old_format)
+  new2("fstArraySeed", filepath = filepath, old_format = old_format)
 }
 
 ### ----------------------------------------------------------------------------
@@ -187,7 +193,7 @@ fstArraySeed <- function(file, old_format = FALSE) {
 #' An _fstArray_ object is just an _fstArraySeed_ wrapped in a
 #' [DelayedArray::DelayedArray-class] object.
 #'
-#' @param file The path (as a single character string) to the fst file where
+#' @param filepath The path (as a single character string) to the fst file where
 #' the dataset is located.
 #' @param old_format use `TRUE` to read fst files generated with a fst package
 #' version lower than v0.8.0
@@ -255,6 +261,7 @@ fstArraySeed <- function(file, old_format = FALSE) {
 #' @rawRd \alias{dimnames,fstArraySeed-method}
 #' @rawRd \alias{extract_array,fstArraySeed-method}
 #' @rawRd \alias{DelayedArray,fstArraySeed-method}
+#' @rawRd \alias{path,fstArraySeed-method}
 #'
 #' @export
 setClass("fstArray", contains = "DelayedArray")
@@ -332,12 +339,12 @@ setMethod("DelayedArray", "fstArraySeed", function(seed) {
 #' @importMethodsFrom DelayedArray DelayedArray
 #' @rdname fstArray-class
 #' @export
-fstArray <- function(file, old_format = FALSE) {
-  if (is(file, "fstArraySeed")) {
+fstArray <- function(filepath, old_format = FALSE) {
+  if (is(filepath, "fstArraySeed")) {
     # TODO: Check old_format agrees with file@old_format?
-    seed <- file
+    seed <- filepath
   } else {
-    seed <- fstArraySeed(file, old_format)
+    seed <- fstArraySeed(filepath, old_format)
   }
   DelayedArray(seed)
 }

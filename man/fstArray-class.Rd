@@ -9,12 +9,12 @@
 \alias{fstArray}
 \title{fst datasets as array-like objects}
 \usage{
-fstArraySeed(file, old_format = FALSE)
+fstArraySeed(filepath, old_format = FALSE)
 
-fstArray(file, old_format = FALSE)
+fstArray(filepath, old_format = FALSE)
 }
 \arguments{
-\item{file}{The path (as a single character string) to the fst file where
+\item{filepath}{The path (as a single character string) to the fst file where
 the dataset is located.}
 
 \item{old_format}{use \code{TRUE} to read fst files generated with a fst package
@@ -99,3 +99,4 @@ stopifnot(validObject(se, complete = TRUE))
 \alias{dimnames,fstArraySeed-method}
 \alias{extract_array,fstArraySeed-method}
 \alias{DelayedArray,fstArraySeed-method}
+\alias{path,fstArraySeed-method}
