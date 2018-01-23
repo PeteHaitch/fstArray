@@ -2,7 +2,7 @@ Package: fstArray
 Title: 'fst' backend for DelayedArray objects
 Description: An array-like container for convenient access and manipulation
 	of fst datasets. Supports delayed operations and block processing.
-Version: 0.0.0.9007
+Version: 0.0.0.9008
 Encoding: UTF-8
 Author: Peter Hickey
 Maintainer: Peter Hickey <peter.hickey@gmail.com>

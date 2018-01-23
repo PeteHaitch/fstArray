@@ -15,10 +15,10 @@ fstArray(filepath, old_format = FALSE)
 }
 \arguments{
 \item{filepath}{The path (as a single character string) to the fst file where
-the dataset is located.}
+the dataset is located or an \link[fst:fst]{fst::fst_table} instance.}
 
 \item{old_format}{use \code{TRUE} to read fst files generated with a fst package
-version lower than v0.8.0}
+version lower than v0.8.0.}
 }
 \value{
 An \emph{fstArray} object for \code{fstArray()}.
@@ -50,9 +50,13 @@ x <- as.data.frame(replicate(10, runif(10000)))
 fst_file <- tempfile(fileext = ".fst")
 write_fst(x, fst_file)
 
-# Construct an fstArray
+# Construct an fstArray from an fst file
 fst_array <- fstArray(fst_file)
 fst_array
+# Construct an fstArray from an fst::fst_table
+fst_table <- fst(fst_file)
+class(fst_table)
+fstArray(fst_table)
 
 # ----------------------------------------------------------------------
 # dim/dimnames

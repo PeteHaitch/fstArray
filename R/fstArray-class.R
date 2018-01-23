@@ -2,14 +2,14 @@
 ### fstArray objects
 ###
 
+setOldClass("fst_table")
 # TODO: Provide access to other args of fst::read.fst() as slots in class?
 #' @rdname fstArray-class
 #' @export
 setClass("fstArraySeed",
          contains = "Array",
-         slots = c(
-           filepath = "character",
-           old_format = "logical"
+         representation(
+           fst_table = "fst_table"
          )
 )
 
@@ -20,11 +20,11 @@ setClass("fstArraySeed",
 #' @importFrom fst metadata_fst
 #' @export
 setMethod("dim", "fstArraySeed", function(x) {
-  metadata <- metadata_fst(path = path(x), old_format = x@old_format)
-  # TODO: `NrOfRows` is stored as a double rather than an int; is this an
-  #       issue? E.g., construct a fst with > .Machine$integer.max rows and see
-  #       what breaks
-  c(as.integer(metadata$nrOfRows), length(metadata$columnBaseTypes))
+  # TODO: dim.fst_table returns a double because `NrOfRows` is stored as a
+  #       double rather than an int; is this a a real issue (E.g., construct a
+  #       fst with > .Machine$integer.max rows and see what breaks) or is it
+  #       just cosmetic
+  as.integer(dim(x@fst_table))
 })
 
 ### ----------------------------------------------------------------------------
@@ -37,8 +37,7 @@ setMethod("dim", "fstArraySeed", function(x) {
 #' @importFrom fst metadata_fst
 #' @export
 setMethod("dimnames", "fstArraySeed", function(x) {
-  metadata <- metadata_fst(path = path(x), old_format = x@old_format)
-  list(NULL, metadata$columnNames)
+  dimnames(x@fst_table)
 })
 
 ### ----------------------------------------------------------------------------
@@ -48,126 +47,45 @@ setMethod("dimnames", "fstArraySeed", function(x) {
 #' @importFrom BiocGenerics path
 #' @export
 setMethod("path", "fstArraySeed", function(object, ...) {
-  object@filepath
+  .subset2(object@fst_table, "meta")$path
 })
 
 ### ----------------------------------------------------------------------------
 ### extract_array()
 ###
 
-# TODO: `DelayedArray:::expand_Nindex_RangeNSBS()` may be useful, here.
-# TODO: See some of the tricks used by `[`,DelayedArray-method when called with
-#       a linear index. Briefly, it loads column-oriented blocks of the data,
-#       subsets the relevant elements, and then joins these up in the correct
-#       order at the end. This should be possible here to minimise the number
-#       of disk I/O ops
-#' @importFrom IRanges findOverlaps IRanges reduce
-#' @importFrom S4Vectors .Call2 subjectHits wmsg
-#' @importFrom BiocGenerics end start
-#' @importFrom fst metadata_fst read_fst
-# NOTE: rows must be a integer vector (although I think an fst file can have
-#       > .Machine$integer.max rows)
-# NOTE: cols must be a character vector
-.extract_data_frame_from_fstArraySeed <-
-  function(x, index, as.data.table = FALSE) {
-    if (as.data.table) {
-      # NOTE: Would need to be careful if supporting as.data.table = TRUE when
-      #       multiple chunks of rows are read from the .fst file and need to
-      #       be combined
-      stop("Currently, 'as.data.table' must be FALSE")
-    }
-    # TODO: Sanity check rows and cols
-    stopifnot(length(index) == 2L)
-    rows <- index[[1L]]
-    columns <- index[[2L]]
-    ans_dim <- DelayedArray:::get_Nindex_lengths(index, dim(x))
-    if (any(ans_dim == 0L)) {
-      metadata <- metadata_fst(path = path(x), old_format = x@old_format)
-      # TODO: `types` adapted fst:::print.fst.metadata(); find a more robust
-      #       way to infer column types
-      types <- c("unknown", "character", "factor", "ordered factor",
-                 "integer", "POSIXct", "difftime", "IDate", "ITime", "double",
-                 "Date", "POSIXct", "difftime", "ITime", "logical", "integer64",
-                 "nanotime", "raw")
-      column_types <- metadata$columnTypes
-      # TODO: This is perhaps too strict. E.g., if column types are 'integer'
-      #       and 'double' then could promote result to 'double' and everything
-      #       should work. But, for now, we'll keep
-      if (any(column_types != column_types[1L])) {
-        stop(wmsg(path(x), " contains multiple column types: ",
-                  paste0(types[unique(column_types)], collapse = ", ")))
-      }
-      type <- types[column_types[[1L]]]
-      ans <- switch(EXPR = type,
-                    "integer" = integer(),
-                    "double" = numeric(),
-                    last = NULL)
-      if (is.null(ans)) {
-        stop(wmsg(path(x), " contains column type unsupported by fstArray: ",
-                  type))
-      }
-      dim(ans) <- ans_dim
-    } else {
-      if (is.numeric(columns)) {
-        # NOTE: fst::read.fst() requires column names rather than indices
-        columns <- colnames(x)[columns]
-      }
-      if (is.null(rows)) {
-        ans <- read_fst(path = path(x),
-                        columns = columns,
-                        from = 1,
-                        to = NULL,
-                        as.data.table = FALSE,
-                        old_format = x@old_format)
-      } else {
-        rows_as_ranges <- IRanges(rows, width = 1L)
-        reduced_ranges <- reduce(rows_as_ranges)
-        froms <- start(reduced_ranges)
-        tos <- end(reduced_ranges)
-        ans_list <- mapply(function(from, to) {
-          read_fst(path = path(x),
-                   columns = columns,
-                   from = from,
-                   to = to,
-                   as.data.table = FALSE,
-                   old_format = x@old_format)
-        }, from = froms, to = tos, SIMPLIFY = FALSE)
-        ans <- do.call(rbind, ans_list)
-        # NOTE: Need to rearrange if row indices are unsorted and/or contain
-        #       duplicates
-        if (is.unsorted(rows) || anyDuplicated(rows)) {
-          ol <- findOverlaps(rows_as_ranges, sort(rows_as_ranges))
-          ans <- ans[subjectHits(ol), , drop = FALSE]
-        }
-      }
-    }
-    ans
-  }
+.extract_array_from_fstArraySeed <- function(x, index) {
+  # TODO: Avoid coercion to matrix which incurs a copy; see fstRead()
+  as.matrix(fstRead(x@fst_table, index))
+}
 
 #' @importMethodsFrom DelayedArray extract_array
 #' @export
-setMethod("extract_array", "fstArraySeed", function(x, index) {
-  # TODO: Avoid coercion to matrix which incurs a copy; can I read from a
-  #       fst file directly into a matrix of appropriate dimensions?
-  as.matrix(.extract_data_frame_from_fstArraySeed(x = x,
-                                                  index = index,
-                                                  as.data.table = FALSE))
-})
+setMethod("extract_array", "fstArraySeed", .extract_array_from_fstArraySeed)
 
 ### ----------------------------------------------------------------------------
 ### fstArraySeed() constructer
 ###
 
+#' @importFrom fst fst
 #' @importFrom S4Vectors isTRUEorFALSE new2
 #' @rdname fstArray-class
 #' @export
 fstArraySeed <- function(filepath, old_format = FALSE) {
-  filepath <- .normarg_filepath(filepath)
   if (!isTRUEorFALSE(old_format)) {
     stop("'old_format' must be TRUE or FALSE")
   }
-  # TODO: Check that all columns of fst are of same type (or coercible)?
-  new2("fstArraySeed", filepath = filepath, old_format = old_format)
+  if (is(filepath, "fst_table")) {
+    if (old_format != .subset2(filepath, "old_format")) {
+      stop("The specified 'old_format' does not match that of the 'fst_table'")
+    }
+    fst_table <- filepath
+  } else {
+    filepath <- .normarg_filepath(filepath)
+    fst_table <- fst(path = filepath, old_format = old_format)
+  }
+  # TODO: Check that all columns of fst_table are of same type (or coercible)?
+  new2("fstArraySeed", fst_table = fst_table)
 }
 
 ### ----------------------------------------------------------------------------
@@ -194,9 +112,9 @@ fstArraySeed <- function(filepath, old_format = FALSE) {
 #' [DelayedArray::DelayedArray-class] object.
 #'
 #' @param filepath The path (as a single character string) to the fst file where
-#' the dataset is located.
+#' the dataset is located or an [fst::fst_table][fst::fst] instance.
 #' @param old_format use `TRUE` to read fst files generated with a fst package
-#' version lower than v0.8.0
+#' version lower than v0.8.0.
 #'
 #' @return An _fstArray_ object for `fstArray()`.
 #'
@@ -219,9 +137,13 @@ fstArraySeed <- function(filepath, old_format = FALSE) {
 #' fst_file <- tempfile(fileext = ".fst")
 #' write_fst(x, fst_file)
 #'
-#' # Construct an fstArray
+#' # Construct an fstArray from an fst file
 #' fst_array <- fstArray(fst_file)
 #' fst_array
+#' # Construct an fstArray from an fst::fst_table
+#' fst_table <- fst(fst_file)
+#' class(fst_table)
+#' fstArray(fst_table)
 #'
 #' # ----------------------------------------------------------------------
 #' # dim/dimnames
@@ -295,37 +217,6 @@ setAs("ANY", "fstMatrix",
 )
 
 ### ----------------------------------------------------------------------------
-### as.data.frame
-###
-
-# TODO: Export?
-#' @importFrom DelayedArray seed
-setMethod("as.data.frame", "fstMatrix", function(x, ...) {
-  .extract_data_frame_from_fstArraySeed(x = seed(x),
-                                        index = unname(x@index),
-                                        as.data.table = FALSE)
-})
-
-# TODO: Would this be useful?
-#       This would introduce a dependency on data.table. If this were supported
-#       it would nice to only have data.table in Suggests rather than Imports.
-#       I don't know if it's possible to have data.table in Suggests and still
-#       define an as.data.table,fstMatrix-method. Also, data.table may soon be
-#       non-optional dependency of fst
-#       (https://github.com/fstpackage/fst/blob/develop/NEWS.md). See
-#       https://github.com/tidyverse/dbplyr/blob/6be777d8b23d588f19c98de52f4e58f16c2ef67e/R/zzz.R for example of conditional S3 registration and
-#       https://stat.ethz.ch/pipermail/r-package-devel/2017q4/002159.html
-#       for discussion of various options
-# #' @importFrom data.table
-# #' @importFrom DelayedArray seed
-# #' @export
-# setMethod("as.data.table", "fstMatrix", function(x, ...) {
-#   .extract_data_frame_from_fstArraySeed(x = seed(x),
-#                                         index = unname(x@index),
-#                                         as.data.table = TRUE)
-# })
-
-### ----------------------------------------------------------------------------
 ### Constructor
 ###
 
@@ -341,7 +232,6 @@ setMethod("DelayedArray", "fstArraySeed", function(seed) {
 #' @export
 fstArray <- function(filepath, old_format = FALSE) {
   if (is(filepath, "fstArraySeed")) {
-    # TODO: Check old_format agrees with file@old_format?
     seed <- filepath
   } else {
     seed <- fstArraySeed(filepath, old_format)
